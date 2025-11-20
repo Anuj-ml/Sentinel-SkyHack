@@ -1,0 +1,8 @@
+module.exports = {
+  EARTH_RADIUS_KM: 6371,
+  GM: 398600.4418, // Earth's gravitational parameter
+  COLLISION_THRESHOLD_KM: 10,
+  PREDICTION_WINDOW_HOURS: 156,
+  PREDICTION_STEP_SECONDS: 60,
+  DEBRIS_COUNT: 500
+};

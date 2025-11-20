@@ -1,0 +1,355 @@
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { OrbitControls, Stars, Billboard } from '@react-three/drei';
+import * as THREE from 'three';
+import { propagateKeplerian } from './physics/keplerian';
+import Globe from './components/Canvas/Globe';
+import Atmosphere from './components/Canvas/Atmosphere';
+import OrbitPath from './components/Canvas/OrbitPath';
+import SearchBar from './components/UI/SearchBar';
+import RightPanel from './components/UI/RightPanel';
+import ComparisonPanel from './components/UI/ComparisonPanel';
+import HazardList from './components/UI/HazardList';
+import ManeuverSuggestion from './components/UI/ManeuverSuggestion';
+import CollisionStrip from './components/UI/CollisionStrip';
+import Landing from './components/UI/Landing';
+import TimeSlider from './components/UI/TimeSlider';
+import { useSatelliteData } from './hooks/useSatelliteData';
+import SortDropdown from './components/UI/SortDropdown';
+
+function App() {
+    const [initialized, setInitialized] = useState(false);
+    const [showDebris, setShowDebris] = useState(false);
+    const [selectedSat, setSelectedSat] = useState(null);
+    const [hazards, setHazards] = useState([]);
+    const [sortBy, setSortBy] = useState('name');
+    const [timeScale, setTimeScale] = useState(0.0005); // SUPER SLOW - barely perceptible movement
+    // Time State
+    const [currentTime, setCurrentTime] = useState(new Date());
+    const [isPlaying, setIsPlaying] = useState(true);
+
+    const { satellites, debris, getHazards } = useSatelliteData();
+
+    // Throttle position updates for performance
+    const POSITION_UPDATE_INTERVAL = 2000; // Update every 2 seconds
+    const lastUpdateRef = useRef(0);
+    const [positionUpdateTrigger, setPositionUpdateTrigger] = useState(0);
+
+    // Animation Loop for Time
+    useEffect(() => {
+        let interval;
+        if (isPlaying) {
+            interval = setInterval(() => {
+                const now = Date.now();
+
+                // Update time every 100ms for smooth display
+                setCurrentTime(prev => new Date(prev.getTime() + 100 * timeScale));
+
+                // Trigger position recalculation only every POSITION_UPDATE_INTERVAL
+                if (now - lastUpdateRef.current > POSITION_UPDATE_INTERVAL) {
+                    setPositionUpdateTrigger(prev => prev + 1);
+                    lastUpdateRef.current = now;
+                }
+            }, 100); // Update every 100ms
+        }
+        return () => clearInterval(interval);
+    }, [isPlaying, timeScale]);
+
+    const handleSelectSat = async (sat) => {
+        setSelectedSat(sat);
+        const hazardData = await getHazards(sat.name);
+        setHazards(hazardData);
+    };
+
+    const handleTimeChange = (newTime) => {
+        setCurrentTime(newTime);
+    };
+
+    // Calculate Positions & Update Hazards (throttled for performance)
+    const currentPositions = useMemo(() => {
+        const allObjects = [...satellites, ...debris];
+
+        // Update Hazard Distances if selected
+        if (selectedSat && hazards.length > 0) {
+            const satPos = propagateKeplerian(selectedSat, currentTime);
+
+            const updatedHazards = hazards.map(h => {
+                const debrisObj = debris.find(d => d.name === h.debrisName);
+                if (!debrisObj) return h;
+
+                const debPos = propagateKeplerian(debrisObj, currentTime);
+                const dist = Math.sqrt(
+                    Math.pow(satPos.x - debPos.x, 2) +
+                    Math.pow(satPos.y - debPos.y, 2) +
+                    Math.pow(satPos.z - debPos.z, 2)
+                );
+
+                return { ...h, distance: dist };
+            });
+
+            // Only update state if significantly different to avoid re-renders? 
+            // Actually, setting state in useMemo is bad. We should do this in a separate effect or use a ref.
+            // But for smooth UI, we might need to just calculate it here and pass it down?
+            // Let's use a ref for the hazard list to avoid re-rendering the whole app every frame just for text numbers.
+            // OR, just let React handle it. 60fps React updates might be heavy.
+            // Better approach: Pass currentPositions to HazardList and let it calculate? No, logic split.
+            // Let's just update a ref that HazardList reads from? No, needs to trigger render.
+            // Let's try updating state every second or so?
+            // For now, let's just calculate it and store it in a Ref, and force update every 500ms?
+        }
+
+        return allObjects.map(obj => {
+            const pos = propagateKeplerian(obj, currentTime);
+            return { ...obj, x: pos.x, y: pos.y, z: pos.z };
+        });
+    }, [satellites, debris, positionUpdateTrigger, currentTime]); // Recalculate every 2 seconds via positionUpdateTrigger
+
+    // Effect to update hazard distances periodically (e.g. every 100ms) for UI
+    useEffect(() => {
+        if (!selectedSat || hazards.length === 0) return;
+
+        const timer = setInterval(() => {
+            setHazards(prevHazards => {
+                const satPos = propagateKeplerian(selectedSat, currentTime);
+                return prevHazards.map(h => {
+                    const debrisObj = debris.find(d => d.name === h.debrisName);
+                    if (!debrisObj) return h;
+                    const debPos = propagateKeplerian(debrisObj, currentTime);
+                    const dist = Math.sqrt(
+                        Math.pow(satPos.x - debPos.x, 2) +
+                        Math.pow(satPos.y - debPos.y, 2) +
+                        Math.pow(satPos.z - debPos.z, 2)
+                    );
+                    return { ...h, distance: dist };
+                }).sort((a, b) => a.distance - b.distance);
+            });
+        }, 200); // 5fps update for UI text
+        return () => clearInterval(timer);
+    }, [currentTime, selectedSat]); // Dependency on currentTime ensures it runs during playback
+
+    // Calculate Earth Rotation (Simple approximation for Keplerian mode)
+    const earthRotation = useMemo(() => {
+        // Rotate Earth based on time. 
+        // Earth rotates 2PI in 24 hours (86400 seconds).
+        // Rotation = (time / 86400) * 2PI
+        const t = currentTime.getTime() / 1000;
+        const rotation = (t / 86400) * 2 * Math.PI;
+
+        // Theme Logic
+        const hour = currentTime.getUTCHours();
+        const isNight = hour < 6 || hour > 18;
+        document.documentElement.className = isNight ? 'dark' : 'light';
+
+        return rotation;
+    }, [currentTime]);
+
+    // Calculate Orbit Path (Keplerian)
+    const orbitPathPoints = useMemo(() => {
+        if (!selectedSat) return [];
+        const points = [];
+        // Propagate +/- 60 mins (or full orbit)
+        // Keplerian orbits are periodic. Let's show one full orbit.
+        // Period T = 2*pi * sqrt(a^3 / mu)
+        // mu = 398600 km^3/s^2
+        // a = radius (km)
+
+        const mu = 398600;
+        const a = selectedSat.radius;
+        const period = 2 * Math.PI * Math.sqrt(Math.pow(a, 3) / mu); // seconds
+
+        // Generate 100 points for one period
+        const startTime = currentTime.getTime();
+        for (let i = 0; i <= 100; i++) {
+            const t = startTime + (i / 100) * period * 1000; // ms
+            const timeObj = new Date(t);
+            const pos = propagateKeplerian(selectedSat, timeObj);
+            points.push(new THREE.Vector3(pos.x, pos.y, pos.z));
+        }
+        return points;
+    }, [selectedSat, currentTime]);
+
+    return (
+        <div style={{ width: '100vw', height: '100vh', background: 'black' }}>
+            {!initialized && (
+                <Landing
+                    onInitialize={() => setInitialized(true)}
+                    onToggleDebris={setShowDebris}
+                    showDebris={showDebris}
+                />
+            )}
+
+            {initialized && (
+                <>
+                    {/* UI Overlay - Z-Index 50 to force on top */}
+                    {/* UI Overlay - Z-Index 50 to force on top */}
+                    <div
+                        className="ui-layer"
+                        style={{
+                            position: 'absolute',
+                            inset: 0,
+                            zIndex: 50,
+                            pointerEvents: 'none', // Let clicks pass through to canvas where no UI exists
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'space-between'
+                        }}
+                    >
+                        {/* Top Bar */}
+                        <div style={{ padding: '20px', pointerEvents: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            {/* Left Side: Search + Comparison */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                <SearchBar
+                                    satellites={satellites}
+                                    onSelect={handleSelectSat}
+                                    showDebris={showDebris}
+                                    setShowDebris={setShowDebris}
+                                />
+                                <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
+                                <ComparisonPanel satellites={satellites} selectedSat={selectedSat} />
+                                <HazardList hazards={hazards} />
+                                <ManeuverSuggestion hazards={hazards} selectedSat={selectedSat} />
+                            </div>
+
+                            {/* Right Side: Info + Education + Ground Stations */}
+                            <RightPanel selectedSat={selectedSat} currentTime={currentTime} />
+                        </div>
+
+                        {/* Bottom Bar */}
+                        <div style={{ pointerEvents: 'auto', display: 'flex', flexDirection: 'column', width: '100%' }}>
+                            {/* Time Slider - Positioned Bottom LEFT */}
+                            <div style={{
+                                position: 'fixed',
+                                bottom: hazards && hazards.length > 0 ? '80px' : '20px', // Above bar when hazards exist
+                                left: '32px', // LEFT SIDE!
+                                width: '320px',
+                                maxWidth: '90vw',
+                                zIndex: 60 // Above hazard bar
+                            }}>
+                                <TimeSlider
+                                    currentTime={currentTime}
+                                    onTimeChange={handleTimeChange}
+                                    isPlaying={isPlaying}
+                                    onTogglePlay={() => setIsPlaying(!isPlaying)}
+                                />
+                            </div>
+
+                            {/* Collision Strip (Full Width) */}
+                            <CollisionStrip hazards={hazards} />
+                        </div>
+                    </div>
+                    <Canvas
+                        camera={{ position: [0, 0, 18], fov: 45 }}
+                        onPointerMissed={() => setSelectedSat(null)}
+                    >
+                        <ambientLight intensity={0.1} />
+                        {/* Sun Light - Fixed position relative to camera or scene? 
+                User asked for "Fixed to camera's front... creating a permanent day side facing user"
+                BUT also asked for "Light vs Dark theme when globe rotates".
+                If we rotate the globe (earthRotation), the texture moves.
+                If the light is fixed, the "Day" side is always the one facing the light.
+                So we keep the light fixed.
+            */}
+                        <pointLight position={[50, 0, 20]} intensity={1.5} />
+                        <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
+
+                        <group rotation={[0, -earthRotation, 0]}>
+                            {/* Rotate the whole group? No, satellites are in ECI (Earth Centered Inertial).
+                  ECI frame does NOT rotate with Earth.
+                  So we should ONLY rotate the Globe mesh.
+                  Satellites stay in ECI.
+              */}
+                        </group>
+
+                        <group>
+                            {/* Globe rotates to match Earth's rotation in ECI frame */}
+                            <mesh rotation={[0, earthRotation, 0]}>
+                                <Globe customRotation={earthRotation} />
+                                {/* Actually, Globe.jsx has its own rotation logic. We should override it. 
+                      Let's just wrap Globe in a group with rotation.
+                  */}
+                            </mesh>
+                            <Atmosphere />
+
+                            {/* Satellites */}
+                            {currentPositions.map((pos) => {
+                                const isDebris = pos.type === 'debris';
+                                if (!showDebris && isDebris) return null;
+
+                                const scale = 5 / 6371;
+                                const x = pos.x * scale;
+                                const y = pos.z * scale;
+                                const z = -pos.y * scale;
+
+                                const isSelected = selectedSat?.name === pos.name;
+
+                                // Focus/Blur Logic
+                                // If a satellite is selected, blur everything else EXCEPT hazards
+                                let opacity = 0.8;
+                                let isBlurred = false;
+
+                                if (selectedSat) {
+                                    const isHazard = hazards.some(h => h.debrisName === pos.name);
+                                    if (isSelected || isHazard) {
+                                        opacity = 1.0;
+                                    } else {
+                                        opacity = 0.1; // Blur effect
+                                        isBlurred = true;
+                                    }
+                                }
+
+                                // Color Coding
+                                let color = '#ffffff';
+                                if (isDebris) {
+                                    color = '#888888'; // Grey for passive debris
+                                    if (selectedSat && hazards.some(h => h.debrisName === pos.name)) {
+                                        color = '#ff0000'; // Red for HAZARD
+                                    }
+                                } else {
+                                    // Satellite Color Coding
+                                    if (pos.name.includes('GPS') || pos.name.includes('NAV')) color = '#ffff00'; // Yellow
+                                    else if (pos.name.includes('STARLINK') || pos.name.includes('IRIDIUM')) color = '#00ff00'; // Green
+                                    else if (pos.name.includes('GOES') || pos.name.includes('NOAA') || pos.name.includes('SENTINEL')) color = '#a020f0'; // Purple
+                                }
+
+                                if (isSelected) color = '#ff007a'; // Override for selected
+
+                                return (
+                                    <Billboard
+                                        key={pos.name}
+                                        position={[x, y, z]}
+                                        follow={true}
+                                        lockX={false}
+                                        lockY={false}
+                                        lockZ={false}
+                                    >
+                                        <mesh onClick={() => handleSelectSat(satellites.find(s => s.name === pos.name))}>
+                                            {isDebris ? (
+                                                <planeGeometry args={[0.05, 0.05]} />
+                                            ) : (
+                                                <planeGeometry args={[0.15, 0.15]} />
+                                            )}
+                                            <meshBasicMaterial
+                                                color={color}
+                                                transparent
+                                                opacity={opacity}
+                                                side={THREE.DoubleSide}
+                                                depthWrite={!isBlurred} // Optimization for transparency
+                                            />
+                                        </mesh>
+                                    </Billboard>
+                                );
+                            })}
+                            {selectedSat && orbitPathPoints.length > 0 && (
+                                <OrbitPath points={orbitPathPoints} color="#ff007a" />
+                            )}
+                        </group>
+
+                        <OrbitControls enablePan={false} minDistance={7} maxDistance={30} />
+                    </Canvas>
+                </>
+            )}
+        </div>
+    );
+}
+
+export default App;

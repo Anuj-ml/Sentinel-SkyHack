@@ -24,7 +24,7 @@ const Globe = ({ customRotation }) => {
     });
 
     return (
-        <mesh ref={meshRef} scale={[1, 1, 1]}>
+        <mesh ref={meshRef} scale={[1, 1, 1]} renderOrder={0}>
             <sphereGeometry args={[5, 64, 64]} />
             <meshPhongMaterial
                 map={colorMap}
@@ -35,6 +35,8 @@ const Globe = ({ customRotation }) => {
                 emissiveMap={lightsMap}
                 emissive={new THREE.Color(0xffff88)}
                 emissiveIntensity={0.5}
+                depthWrite={true}
+                depthTest={true}
             />
         </mesh>
     );

@@ -376,6 +376,7 @@ function App() {
                                 satellites={satellites}
                                 selectedSat={selectedSat}
                                 hazards={hazards}
+                                onBack={() => setView('landing')}
                             />
 
                             {/* Right Side: Info + Education + Ground Stations */}
@@ -384,11 +385,11 @@ function App() {
 
                         {/* Bottom Bar */}
                         <div style={{ pointerEvents: 'auto', display: 'flex', flexDirection: 'column', width: '100%' }}>
-                            {/* Time Slider - Positioned Bottom LEFT */}
+                            {/* Time Slider - Positioned Bottom RIGHT (left of ground stations) */}
                             <div style={{
                                 position: 'fixed',
                                 bottom: hazards && hazards.length > 0 ? '80px' : '20px', // Above bar when hazards exist
-                                left: '32px', // LEFT SIDE!
+                                right: '820px', // 720px + 100px more
                                 width: '320px',
                                 maxWidth: '90vw',
                                 zIndex: 60 // Above hazard bar
@@ -403,6 +404,37 @@ function App() {
 
                             {/* Collision Strip (Full Width) */}
                             <CollisionStrip hazards={hazards} />
+                            
+                            {/* Advanced Simulator Button - Bottom Right */}
+                            <div style={{
+                                position: 'fixed',
+                                bottom: '20px',
+                                right: '20px',
+                                zIndex: 60
+                            }}>
+                                <button
+                                    onClick={() => window.location.href = '/AdvancedSimulator.html'}
+                                    title="Advanced Collision Simulator"
+                                    style={{
+                                        padding: '12px 20px',
+                                        background: 'rgba(37,99,235,0.9)',
+                                        color: '#fff',
+                                        border: '1px solid rgba(37,99,235,0.3)',
+                                        borderRadius: '999px',
+                                        cursor: 'pointer',
+                                        fontSize: '0.9rem',
+                                        fontWeight: '500',
+                                        pointerEvents: 'auto',
+                                        boxShadow: '0 4px 15px rgba(37,99,235,0.3)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px'
+                                    }}
+                                >
+                                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>science</span>
+                                    Advanced Simulator
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <Canvas
@@ -440,7 +472,7 @@ function App() {
                             )}
                         </group>
 
-                        <OrbitControls enablePan={false} minDistance={7} maxDistance={30} />
+                        <OrbitControls enablePan={false} minDistance={7} maxDistance={30} enabled={true} />
 
                         {postProcessingEnabled && (
                             <SafeEffectComposer>

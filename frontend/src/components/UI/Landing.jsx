@@ -79,28 +79,46 @@ const Landing = ({ onInitialize, onOpenSimulator }) => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                padding: '120px 8% 80px',
+                padding: '50px 8% 80px',
                 position: 'relative',
                 zIndex: 5,
                 overflow: 'hidden',
-                gap: '40px'
+                gap: '40px',
+                background: '#000000'
             }}>
-                {/* Blue Blurred Gradient Background - Full Hero Section */}
+                {/* Bottom Fade Effect */}
+                <div style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    height: '150px',
+                    background: 'linear-gradient(to bottom, transparent, rgba(0,0,0,0.8), #000000)',
+                    zIndex: 10,
+                    pointerEvents: 'none'
+                }}></div>
+                {/* Video/GIF Background */}
                 <div style={{
                     position: 'absolute',
                     inset: 0,
-                    background: `
-                        radial-gradient(circle at 20% 30%, rgba(59, 130, 246, 0.4) 0%, transparent 50%),
-                        radial-gradient(circle at 80% 70%, rgba(30, 58, 138, 0.3) 0%, transparent 50%),
-                        radial-gradient(circle at 50% 50%, rgba(37, 99, 235, 0.2) 0%, transparent 60%)
-                    `,
-                    filter: 'blur(100px)',
                     zIndex: 0,
-                    pointerEvents: 'none'
-                }}></div>
+                    pointerEvents: 'none',
+                    overflow: 'hidden'
+                }}>
+                    <img 
+                        src="/Purple Black Modern Futuristic Outer Space Video.gif" 
+                        alt="Space Background"
+                        style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            opacity: 1
+                        }}
+                    />
+                </div>
 
                 {/* Left Content */}
-                <div style={{ flex: '1', maxWidth: '600px', position: 'relative', zIndex: 1 }}>
+                <div style={{ flex: '1', maxWidth: '600px', position: 'relative', zIndex: 1, paddingTop: '0' }}>
                     <motion.h1
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -137,23 +155,26 @@ const Landing = ({ onInitialize, onOpenSimulator }) => {
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             onClick={onInitialize}
+                            className="tracker-button"
                             style={{
                                 padding: '16px 40px',
                                 fontSize: '1.1rem',
                                 fontWeight: 500,
                                 borderRadius: '30px',
-                                border: 'none',
-                                background: '#4285F4',
+                                border: '1px solid rgba(66, 133, 244, 0.5)',
+                                background: 'transparent',
                                 color: 'white',
                                 cursor: 'pointer',
-                                boxShadow: '0 4px 15px rgba(66, 133, 244, 0.3)',
+                                boxShadow: '0 4px 15px rgba(66, 133, 244, 0.2)',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '12px'
+                                gap: '12px',
+                                position: 'relative',
+                                overflow: 'hidden'
                             }}
                         >
-                            Launch Tracker
-                            <span className="material-symbols-outlined">arrow_forward</span>
+                            <span style={{ position: 'relative', zIndex: 1 }}>Launch Tracker</span>
+                            <span className="material-symbols-outlined" style={{ position: 'relative', zIndex: 1 }}>arrow_forward</span>
                         </motion.button>
                         <motion.button
                             initial={{ opacity: 0, y: 20 }}
@@ -161,7 +182,8 @@ const Landing = ({ onInitialize, onOpenSimulator }) => {
                             transition={{ delay: 1.7, duration: 0.5 }}
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            onClick={onOpenSimulator}
+                            onClick={() => window.location.href = '/AdvancedSimulator.html'}
+                            className="simulator-button"
                             style={{
                                 padding: '16px 32px',
                                 fontSize: '1.05rem',
@@ -173,11 +195,13 @@ const Landing = ({ onInitialize, onOpenSimulator }) => {
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '12px'
+                                gap: '12px',
+                                position: 'relative',
+                                overflow: 'hidden'
                             }}
                         >
-                            Advanced Collision Simulator
-                            <span className="material-symbols-outlined">science</span>
+                            <span style={{ position: 'relative', zIndex: 1 }}>Advanced Collision Simulator</span>
+                            <span className="material-symbols-outlined" style={{ position: 'relative', zIndex: 1 }}>science</span>
                         </motion.button>
                     </div>
 
@@ -225,7 +249,7 @@ const Landing = ({ onInitialize, onOpenSimulator }) => {
                     }}
                 >
                     <div style={{ width: '100%', maxWidth: '580px', aspectRatio: '1 / 1', borderRadius: '32px', overflow: 'hidden' }}>
-                        <RealisticGlobe />
+                        <RealisticGlobe showStars={false} />
                     </div>
                 </motion.div>
             </main>
@@ -244,6 +268,34 @@ const Landing = ({ onInitialize, onOpenSimulator }) => {
                 @keyframes blink {
                     0%, 100% { opacity: 1; }
                     50% { opacity: 0; }
+                }
+                .tracker-button::before {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 0;
+                    height: 100%;
+                    background: rgba(66, 133, 244, 0.6);
+                    transition: width 0.4s ease;
+                    z-index: 0;
+                }
+                .tracker-button:hover::before {
+                    width: 100%;
+                }
+                .simulator-button::before {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 0;
+                    height: 100%;
+                    background: rgba(147, 51, 234, 0.4);
+                    transition: width 0.4s ease;
+                    z-index: 0;
+                }
+                .simulator-button:hover::before {
+                    width: 100%;
                 }
             `}</style>
         </div>

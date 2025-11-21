@@ -3,7 +3,7 @@ import * as THREE from 'three';
 
 const Atmosphere = () => {
     return (
-        <mesh scale={[1.1, 1.1, 1.1]}>
+        <mesh scale={[1.1, 1.1, 1.1]} renderOrder={3}>
             <sphereGeometry args={[5, 64, 64]} />
             <meshBasicMaterial
                 color="#4488ff"
@@ -11,6 +11,7 @@ const Atmosphere = () => {
                 opacity={0.1}
                 side={THREE.BackSide}
                 blending={THREE.AdditiveBlending}
+                depthWrite={false}
             />
         </mesh>
     );

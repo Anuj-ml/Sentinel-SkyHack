@@ -69,13 +69,18 @@ const SatelliteSwarm = ({ positions, selectedSat, hazards, onSelect, showDebris 
                             lockY={false}
                             lockZ={false}
                         >
-                            <mesh onClick={(e) => {
-                                e.stopPropagation();
-                                if (onSelect && typeof onSelect === 'function') {
-                                    onSelect(pos);
-                                }
-                            }}>
-                                {isDebris ? (
+                            <mesh 
+                                renderOrder={1}
+                                onPointerDown={(e) => {
+                                    // Only select on click, don't block drag
+                                    if (e.delta < 2) { // delta is movement in pixels, < 2 means it's a click not drag
+                                        e.stopPropagation();
+                                        if (onSelect && typeof onSelect === 'function') {
+                                            onSelect(pos);
+                                        }
+                                    }
+                                }}
+                            >                                {isDebris ? (
                                     <planeGeometry args={[0.05, 0.05]} />
                                 ) : (
                                     <planeGeometry args={[0.15, 0.15]} />
@@ -85,7 +90,8 @@ const SatelliteSwarm = ({ positions, selectedSat, hazards, onSelect, showDebris 
                                     transparent
                                     opacity={opacity}
                                     side={THREE.DoubleSide}
-                                    depthWrite={!isBlurred}
+                                    depthWrite={true}
+                                    depthTest={true}
                                     toneMapped={false}
                                 />
                             </mesh>

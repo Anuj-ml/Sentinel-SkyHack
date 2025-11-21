@@ -4,7 +4,10 @@ import { motion } from 'framer-motion';
 const Footer = () => {
     return (
         <footer style={{
-            background: 'linear-gradient(135deg, #000000 0%, #0a0a2e 50%, #16213e 100%)',
+            background: 'url("/landing-bg.png")',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundAttachment: 'fixed',
             color: '#ffffff',
             padding: '80px 8% 40px',
             fontFamily: '"Google Sans", "Roboto", sans-serif',

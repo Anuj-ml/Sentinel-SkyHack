@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orbital Collision Avoidance Training System</title>
+    <!-- ADDING THREE.JS LIBRARY -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;700&family=Orbitron:wght@400;700&display=swap');
+
+        :root {
+            --primary-color: #00d8ff;
+            --secondary-color: #ff9800;
+            --danger-color: #ff5252;
+            --success-color: #00ff7f;
+            --warning-color: #ffeb3b;
+            --bg-color: #03050a;
+            --panel-bg: rgba(10, 20, 35, 0.85);
+            --border-color: rgba(0, 216, 255, 0.2);
+            --border-glow: rgba(0, 216, 255, 0.5);
+            --font-family-ui: 'Roboto Mono', monospace;
+            --font-family-title: 'Orbitron', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body, html {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            font-family: var(--font-family-ui);
+            background: var(--bg-color);
+            color: #e0e0e0;
+        }
+        
+        body::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                repeating-linear-gradient(0deg, rgba(255,255,255,0.02), rgba(255,255,255,0.02) 1px, transparent 1px, transparent 3px);
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: #000;
+        }
+
+        /* --- SATELLITE LABEL STYLES --- */
+        .label-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Make container non-interactive */
+            overflow: hidden;
+        }
+
+        .satellite-label {
+            position: absolute;
+            color: white;
+            font-family: var(--font-family-ui);
+            font-size: 12px;
+            padding: 2px 5px;
+            background: rgba(0,0,0,0.6);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            transform: translate(-50%, 10px); /* Position it nicely below the point */
+            white-space: nowrap;
+            will-change: transform;
+            transition: opacity 0.2s;
+        }
+
+
+        #header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: linear-gradient(to right, rgba(3, 5, 10, 0.9), rgba(15, 25, 45, 0.9));
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: 0 2px 10px var(--border-glow);
+            display: flex;
+            align-items: center;
+            padding: 0 30px;
+            z-index: 1000;
+        }
+
+        #header h1 {
+            font-family: var(--font-family-title);
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: var(--primary-color);
+            text-shadow: 0 0 8px var(--border-glow);
+        }
+
+        #header .status {
+            margin-left: auto;
+            display: flex;
+            gap: 30px;
+            font-size: 14px;
+            font-family: var(--font-family-ui);
+        }
+
+        #header .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #header .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--success-color);
+            box-shadow: 0 0 10px var(--success-color);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(0.8); opacity: 0.7; }
+        }
+        
+        .panel {
+            position: absolute;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(12px);
+            box-shadow: 0 0 25px rgba(0, 0, 0, 0.7);
+            border-radius: 0; /* Sharp corners */
+            padding: 20px;
+            z-index: 500;
+        }
+        
+        .panel::before, .panel::after {
+            content: '';
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            border-color: var(--primary-color);
+            border-style: solid;
+        }
+
+        .panel::before { top: -2px; left: -2px; border-width: 2px 0 0 2px; }
+        .panel::after { top: -2px; right: -2px; border-width: 2px 2px 0 0; }
+        
+        .panel .content-wrapper::before, .panel .content-wrapper::after {
+            content: '';
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            border-color: var(--primary-color);
+            border-style: solid;
+        }
+        .panel .content-wrapper::before { bottom: -2px; left: -2px; border-width: 0 0 2px 2px; }
+        .panel .content-wrapper::after { bottom: -2px; right: -2px; border-width: 0 2px 2px 0; }
+
+
+        #leftPanel {
+            top: 80px;
+            left: 20px;
+            width: 350px;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+        }
+
+        #rightPanel {
+            top: 80px;
+            right: 20px;
+            width: 350px;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+        }
+
+        .section { margin-bottom: 25px; }
+        .section:last-child { margin-bottom: 0; }
+
+        .section-title {
+            font-family: var(--font-family-title);
+            font-size: 14px;
+            font-weight: 400;
+            color: var(--primary-color);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+        }
+        
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 16px;
+            background: var(--primary-color);
+            margin-right: 10px;
+            box-shadow: 0 0 5px var(--primary-color);
+        }
+
+        .form-group { margin-bottom: 12px; }
+        .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+        .action-grid button { margin-top: 0; font-size: 10px; padding: 8px 12px; }
+        .time-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+        .time-controls button { margin-top: 0; font-size: 10px; padding: 8px 12px; }
+
+        label {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            color: #b0b0b0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            color: #e0e0e0;
+            font-size: 14px;
+            font-family: var(--font-family-ui);
+            transition: all 0.3s ease;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            background: rgba(0, 216, 255, 0.1);
+            box-shadow: 0 0 10px var(--border-glow);
+        }
+
+        button {
+            width: 100%;
+            padding: 12px 16px;
+            background: transparent;
+            border: 1px solid var(--primary-color);
+            color: var(--primary-color);
+            font-family: var(--font-family-title);
+            font-size: 12px;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 8px;
+            position: relative;
+        }
+        
+        button:hover {
+            background: var(--border-glow);
+            color: var(--bg-color);
+            box-shadow: 0 0 15px var(--border-glow);
+        }
+
+        button.danger { border-color: var(--danger-color); color: var(--danger-color); }
+        button.danger:hover { background: var(--danger-color); color: #fff; box-shadow: 0 0 15px var(--danger-color); }
+        
+        #collisionAlert {
+            background: linear-gradient(135deg, rgba(255, 82, 82, 0.1), rgba(255, 82, 82, 0.2));
+            border: 2px solid var(--danger-color);
+            padding: 15px;
+            display: none;
+            box-shadow: 0 0 20px var(--danger-color);
+        }
+
+        #collisionAlert.active { display: block; }
+
+        #collisionAlert .alert-title {
+            font-family: var(--font-family-title);
+            color: var(--danger-color);
+            font-size: 16px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 15px;
+            text-align: center;
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            50% { opacity: 0.5; }
+        }
+
+        .collision-info {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            margin: 10px 0;
+            font-family: var(--font-family-ui);
+            font-size: 12px;
+            line-height: 1.8;
+        }
+
+        .collision-info-value { color: var(--success-color); font-weight: 700; }
+
+        #logConsole {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            height: 250px;
+            overflow-y: auto;
+            font-family: var(--font-family-ui);
+            font-size: 11px;
+            line-height: 1.6;
+        }
+        
+        .log-timestamp { color: var(--primary-color); }
+        .log-success { color: var(--success-color); }
+        .log-info { color: #87cefa; }
+        .log-warning { color: var(--warning-color); }
+        .log-danger { color: var(--danger-color); }
+        
+        .stats, .collision-info { border-left: 3px solid var(--primary-color); }
+        .stat-value { color: var(--success-color); font-weight: 700; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <canvas id="canvas"></canvas>
+        <div class="label-container" id="label-container"></div>
+    </div>
+
+    <div id="header">
+        <span onclick="window.location.href='/'" style="color: var(--primary-color); font-size: 40px; cursor: pointer; margin-right: 15px; display: inline-flex; align-items: center;">←</span>
+        <h1>ORBITAL COLLISION AVOIDANCE TRAINING SYSTEM</h1>
+        <div class="status">
+            <div class="status-item">
+                <div class="status-indicator"></div>
+                <span>SYSTEM NOMINAL</span>
+            </div>
+            <div class="status-item">
+                <span id="currentTime">00:00:00 UTC</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="leftPanel" class="panel">
+        <div class="content-wrapper">
+            <div class="section">
+                <div class="section-title">ADD SATELLITE</div>
+                <div class="form-group">
+                    <label>Object Name</label>
+                    <input type="text" id="objectName" placeholder="SAT-001">
+                </div>
+                <div class="form-group">
+                    <label>Type</label>
+                    <select id="objectType">
+                        <option value="satellite">Satellite</option>
+                        <option value="debris">Debris</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Orbit Preset</label>
+                    <select id="orbitPreset">
+                        <option value="leo">LEO (Low Earth Orbit)</option>
+                        <option value="meo">MEO (Medium Earth Orbit)</option>
+                        <option value="geo">GEO (Geostationary)</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Semi-Major Axis (km)</label>
+                    <input type="number" id="semiMajorAxis" value="7000">
+                </div>
+                <div class="form-group">
+                    <label>Inclination (°)</label>
+                    <input type="number" id="inclination" value="51.6">
+                </div>
+                <button id="addObjectBtn">Add Object</button>
+            </div>
+
+            <div class="section">
+                <div class="section-title">TIME CONTROL</div>
+                <button id="pauseBtn">Pause</button>
+                <div class="time-controls">
+                    <button id="speed1x">1x</button>
+                    <button id="speed10x">10x</button>
+                    <button id="speed100x">100x</button>
+                    <button id="speed1000x">1000x</button>
+                </div>
+                <div style="text-align: center; margin-top: 15px; font-family: var(--font-family-ui); font-size: 14px; color: var(--primary-color);">
+                    SIMULATION RATE: <span id="timeDisplay">1x</span>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">SCENARIO CONTROL</div>
+                <div class="form-group">
+                    <label>CelesTrak Catalog</label>
+                    <select id="celestrakCatalog">
+                        <option value="">Select Catalog...</option>
+                        <option value="stations">Space Stations</option>
+                        <option value="active">Active Satellites</option>
+                        <option value="starlink">Starlink</option>
+                        <option value="debris">Debris</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Number of Objects</label>
+                    <input type="number" id="numCatalogObjects" value="5" min="1" max="50">
+                </div>
+                <button id="loadCatalogBtn">Load from CelesTrak</button>
+                <button id="analyzeBtn">Analyze Conjunctions</button>
+                <button id="resetBtn" class="danger">Reset Simulation</button>
+            </div>
+
+            <div class="section">
+                <div class="section-title">STATISTICS</div>
+                <div class="stats" style="padding:15px">
+                    <div class="stat-row" style="display:flex; justify-content:space-between; padding: 4px 0; font-size:12px;">
+                        <span class="stat-label">Objects in Orbit:</span>
+                        <span class="stat-value" id="objectCount">0</span>
+                    </div>
+                    <div class="stat-row" style="display:flex; justify-content:space-between; padding: 4px 0; font-size:12px;">
+                        <span class="stat-label">Collisions:</span>
+                        <span class="stat-value" id="collisionCount" style="color:var(--danger-color);">0</span>
+                    </div>
+                    <div class="stat-row" style="display:flex; justify-content:space-between; padding: 4px 0; font-size:12px;">
+                        <span class="stat-label">Avoidances:</span>
+                        <span class="stat-value" id="avoidanceCount">0</span>
+                    </div>
+                    <div class="stat-row" style="display:flex; justify-content:space-between; padding: 4px 0; font-size:12px;">
+                        <span class="stat-label">Episodes:</span>
+                        <span class="stat-value" id="episodeCount">0</span>
+                    </div>
+                </div>
+                 <div class="time-controls">
+                    <button id="exportJSON">Export JSON</button>
+                    <button id="exportCSV">Export CSV</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="rightPanel" class="panel">
+        <div class="content-wrapper">
+            <div id="collisionAlert">
+                <div class="alert-title">CRITICAL CONJUNCTION</div>
+                <div class="collision-info" id="collisionDetails"></div>
+                <div class="action-grid">
+                    <button id="action1">Prograde Burn</button>
+                    <button id="action2">Retrograde</button>
+                    <button id="action3">Normal Burn</button>
+                    <button id="action4">Radial Burn</button>
+                    <button id="action5" style="border-color:var(--warning-color); color:var(--warning-color);">Monitor</button>
+                    <button id="action6" class="danger">Simulate Impact</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">EVENT LOG</div>
+                <div id="logConsole"></div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">TRAINING DATA</div>
+                <div class="stats" style="padding:15px">
+                    <div class="stat-row" style="display:flex; justify-content:space-between; padding: 4px 0; font-size:12px;">
+                        <span class="stat-label">Data Points:</span>
+                        <span class="stat-value" id="dataPoints">0</span>
+                    </div>
+                </div>
+                <div id="dataLog" style="font-size: 10px; margin-top: 10px; font-family:var(--font-family-ui)"></div>
+                <button id="clearData" class="danger" style="margin-top: 10px;">Clear Training Data</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 3D Scene Setup ---
+        let scene, camera, renderer, controls, earthMesh, cloudsMesh;
+        const EARTH_RADIUS_3D = 100;
+        const labelContainer = document.getElementById('label-container');
+
+        // --- Simulation State ---
+        let satellites = [];
+        let collisionCount = 0;
+        let avoidanceCount = 0;
+        let episodeCount = 0;
+        let trainingData = [];
+        let currentCollision = null;
+        let animationSpeed = 1;
+        let isPaused = false;
+        
+        function init() {
+            initThreeJS();
+            updateClock();
+            setInterval(updateClock, 1000);
+            initializeControls();
+            animate();
+            log('System initialized successfully', 'success');
+        }
+
+        function initThreeJS() {
+            const canvas = document.getElementById('canvas');
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 5000);
+            camera.position.z = 400;
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 150;
+            controls.maxDistance = 1000;
+            scene.add(new THREE.AmbientLight(0x404040, 1.5));
+            const sunLight = new THREE.DirectionalLight(0xffffff, 1.0);
+            sunLight.position.set(-2, 0.5, 1.5);
+            scene.add(sunLight);
+            
+            // --- FIX 1: EARTH VISIBILITY ---
+            // Using reliable, CORS-enabled textures.
+            const textureLoader = new THREE.TextureLoader();
+            const earthGeometry = new THREE.SphereGeometry(EARTH_RADIUS_3D, 64, 64);
+            const earthMaterial = new THREE.MeshPhongMaterial({
+                map: textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_2048.jpg'),
+                bumpMap: textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_normal_2048.jpg'),
+                bumpScale: 0.5,
+                specularMap: textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_specular_2048.jpg'),
+                specular: new THREE.Color('grey')
+            });
+            earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
+            scene.add(earthMesh);
+
+            const cloudsGeometry = new THREE.SphereGeometry(EARTH_RADIUS_3D + 1, 64, 64);
+            const cloudsMaterial = new THREE.MeshPhongMaterial({
+                map: textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_clouds_1024.png'),
+                transparent: true,
+                opacity: 0.4
+            });
+            cloudsMesh = new THREE.Mesh(cloudsGeometry, cloudsMaterial);
+            scene.add(cloudsMesh);
+
+            const starVertices = [];
+            for (let i = 0; i < 10000; i++) starVertices.push(THREE.MathUtils.randFloatSpread(4000));
+            const starGeometry = new THREE.BufferGeometry();
+            starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+            const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.7 });
+            scene.add(new THREE.Points(starGeometry, starMaterial));
+        }
+
+        function addSatellite(name, type = 'satellite') {
+            const orbitRadius = EARTH_RADIUS_3D + 20 + Math.random() * 80;
+            const angle = Math.random() * Math.PI * 2;
+            
+            const satMaterial = new THREE.SpriteMaterial({ color: type === 'satellite' ? 0x00ff7f : 0xff5252, depthTest: false });
+            const satSprite = new THREE.Sprite(satMaterial);
+            // --- FIX 3: SATELLITE SIZE INCREASED ---
+            satSprite.scale.set(5, 5, 1);
+
+            const curve = new THREE.EllipseCurve(0, 0, orbitRadius, orbitRadius, 0, 2 * Math.PI, false, 0);
+            const orbitGeometry = new THREE.BufferGeometry().setFromPoints(curve.getPoints(128));
+            const orbitMaterial = new THREE.LineBasicMaterial({ color: 0x00d8ff, transparent: true, opacity: 0.3 });
+            const orbitLine = new THREE.Line(orbitGeometry, orbitMaterial);
+
+            // --- FIX 2: REALISTIC ORBITAL PLANES ---
+            // Apply random rotations to simulate both inclination and ascending node.
+            const randomRotation = new THREE.Euler(
+                Math.random() * Math.PI,
+                Math.random() * Math.PI * 2,
+                0,
+                'XYZ'
+            );
+            orbitLine.setRotationFromEuler(randomRotation);
+            
+            const satGroup = new THREE.Group();
+            satGroup.add(satSprite);
+            scene.add(satGroup);
+            scene.add(orbitLine);
+
+            // --- FIX 4: SATELLITE LABELS ---
+            const labelElement = document.createElement('div');
+            labelElement.className = 'satellite-label';
+            labelElement.textContent = name;
+            labelContainer.appendChild(labelElement);
+            
+            const sat = {
+                name: name,
+                type: type,
+                angle: angle,
+                angularVelocity: (0.005 / (orbitRadius / 100)),
+                orbitRadius: orbitRadius,
+                orbitRotation: randomRotation, // Store the rotation
+                object3d: satGroup,
+                orbitLine3d: orbitLine,
+                sprite: satSprite,
+                color: type === 'satellite' ? '#00ff7f' : '#ff5252',
+                labelElement: labelElement
+            };
+
+            satellites.push(sat);
+            updateObjectCount();
+            log(`Added ${name} to orbit`, 'success');
+        }
+
+        function updateSatellitesAndCheckCollisions() {
+            const screenPositions = [];
+
+            satellites.forEach(sat => {
+                if (!isPaused) sat.angle += sat.angularVelocity * animationSpeed;
+                
+                const pos = new THREE.Vector3(
+                    Math.cos(sat.angle) * sat.orbitRadius,
+                    Math.sin(sat.angle) * sat.orbitRadius,
+                    0
+                ).applyEuler(sat.orbitRotation); // Apply the stored unique rotation
+                
+                sat.object3d.position.copy(pos);
+                sat.sprite.material.color.set(sat.color === '#ffff00' ? 0xffff00 : (sat.type === 'satellite' ? 0x00ff7f : 0xff5252));
+                
+                const screenPos = pos.clone().project(camera);
+                screenPositions.push({
+                    x: (screenPos.x + 1) * window.innerWidth / 2,
+                    y: (-screenPos.y + 1) * window.innerHeight / 2,
+                    z: screenPos.z, // For checking if behind camera
+                    sat: sat
+                });
+            });
+
+            for (let i = 0; i < screenPositions.length; i++) {
+                for (let j = i + 1; j < screenPositions.length; j++) {
+                    const pos1 = screenPositions[i];
+                    const pos2 = screenPositions[j];
+                    const distance = Math.sqrt(Math.pow(pos1.x - pos2.x, 2) + Math.pow(pos1.y - pos2.y, 2));
+
+                    if (distance < 15 && !currentCollision && (pos1.sat.type === 'satellite' || pos2.sat.type === 'satellite')) {
+                        const sat1 = pos1.sat.type === 'satellite' ? pos1.sat : pos2.sat;
+                        const sat2 = pos1.sat.type === 'satellite' ? pos2.sat : pos1.sat;
+                        showCollisionAlert(sat1, sat2, distance);
+                        break;
+                    }
+                }
+                if (currentCollision) break;
+            }
+            updateLabels(screenPositions);
+        }
+
+        function updateLabels(screenPositions) {
+            screenPositions.forEach(pos => {
+                // Hide label if the object is behind the camera
+                if (pos.z > 1) {
+                    pos.sat.labelElement.style.opacity = '0';
+                } else {
+                    pos.sat.labelElement.style.opacity = '1';
+                    pos.sat.labelElement.style.transform = `translate(${pos.x}px, ${pos.y}px)`;
+                }
+            });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            earthMesh.rotation.y += 0.0001 * animationSpeed;
+            cloudsMesh.rotation.y += 0.0002 * animationSpeed;
+            updateSatellitesAndCheckCollisions();
+            renderer.render(scene, camera);
+        }
+        
+        function removeSatellite(sat) {
+            scene.remove(sat.object3d);
+            scene.remove(sat.orbitLine3d);
+            labelContainer.removeChild(sat.labelElement);
+        }
+
+        function executeAction(actionId) {
+            if (!currentCollision) return;
+
+            const actions = {
+                1: { name: 'Prograde Burn', success: Math.random() > 0.05 },
+                2: { name: 'Retrograde Burn', success: Math.random() > 0.10 },
+                3: { name: 'Normal Burn', success: Math.random() > 0.15 },
+                4: { name: 'Radial Burn', success: Math.random() > 0.20 },
+                5: { name: 'Monitor Only', success: Math.random() < 0.1 },
+                6: { name: 'Simulate Impact', success: false },
+            };
+
+            const action = actions[actionId];
+            const outcome = action.success ? 'avoided' : 'collision';
+            const reward = action.success ? 100 : -100;
+            const sat1 = currentCollision.sat1;
+            const sat2 = currentCollision.sat2;
+
+            const state = {
+                primary_pos: sat1.object3d.position.toArray(),
+                threat_pos: sat2.object3d.position.toArray(),
+                relative_pos: sat2.object3d.position.clone().sub(sat1.object3d.position).toArray(),
+                initial_proximity: currentCollision.distance,
+                primary_type: sat1.type,
+                threat_type: sat2.type
+            };
+            
+            trainingData.push({ episode: episodeCount++, timestamp: new Date().toISOString(), state: state, action_id: actionId, action_name: action.name, outcome: outcome, reward: reward });
+
+            if (outcome === 'collision') {
+                collisionCount++;
+                removeSatellite(sat1);
+                removeSatellite(sat2);
+                satellites = satellites.filter(s => s !== sat1 && s !== sat2);
+                log(`ACTION: ${action.name} -> COLLISION OCCURRED`, 'danger');
+            } else {
+                avoidanceCount++;
+                sat1.color = '#ffff00'; // Mark as having performed a maneuver
+                log(`ACTION: ${action.name} -> Collision avoided`, 'success');
+            }
+
+            updateObjectCount();
+            updateStats();
+            saveData();
+            document.getElementById('collisionAlert').classList.remove('active');
+            currentCollision = null;
+        }
+
+        function showCollisionAlert(sat1, sat2, distance) {
+            currentCollision = { sat1, sat2, distance };
+            document.getElementById('collisionDetails').innerHTML = `
+                <div style="display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px solid rgba(255,255,255,0.1)"><span>PRIMARY:</span><span class="collision-info-value">${sat1.name}</span></div>
+                <div style="display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px solid rgba(255,255,255,0.1)"><span>CONJUNCTION:</span><span class="collision-info-value">${sat2.name}</span></div>
+                <div style="display:flex; justify-content:space-between; padding:3px 0;"><span>PROXIMITY:</span><span class="collision-info-value">${distance.toFixed(1)} px</span></div>
+            `;
+            document.getElementById('collisionAlert').classList.add('active');
+            log(`COLLISION ALERT: ${sat1.name} vs ${sat2.name}`, 'danger');
+        }
+
+        function updateStats() {
+            document.getElementById('episodeCount').textContent = episodeCount;
+            document.getElementById('dataPoints').textContent = trainingData.length;
+            document.getElementById('collisionCount').textContent = collisionCount;
+            document.getElementById('avoidanceCount').textContent = avoidanceCount;
+            const dataLog = document.getElementById('dataLog');
+            dataLog.innerHTML = trainingData.slice(-5).reverse().map(d => 
+                `<div style="padding:3px 0; border-bottom:1px solid rgba(100,150,200,0.1); color:${d.outcome==='collision'?'var(--danger-color)':'var(--success-color)'}">
+                    EP ${d.episode}: ${d.action_name} → ${d.outcome.toUpperCase()} [R:${d.reward}]
+                </div>`
+            ).join('');
+        }
+
+        function updateClock() {
+            document.getElementById('currentTime').textContent = new Date().toISOString().substr(11, 8) + ' UTC';
+        }
+
+        function updateObjectCount() {
+            document.getElementById('objectCount').textContent = satellites.length;
+        }
+
+        function initializeControls() {
+            document.getElementById('addObjectBtn').addEventListener('click', () => {
+                const name = document.getElementById('objectName').value || `SAT-${String(satellites.length).padStart(3,'0')}`;
+                addSatellite(name, document.getElementById('objectType').value);
+                document.getElementById('objectName').value = '';
+            });
+            document.getElementById('pauseBtn').addEventListener('click', () => {
+                isPaused = !isPaused;
+                document.getElementById('pauseBtn').textContent = isPaused ? 'Resume' : 'Pause';
+                log(isPaused ? 'Simulation paused' : 'Simulation resumed', 'info');
+            });
+            const speeds = { 'speed1x': 1, 'speed10x': 10, 'speed100x': 100, 'speed1000x': 1000 };
+            Object.keys(speeds).forEach(id => document.getElementById(id).addEventListener('click', () => setTimeSpeed(speeds[id])));
+            document.getElementById('loadCatalogBtn').addEventListener('click', loadCelesTrakCatalog);
+            document.getElementById('analyzeBtn').addEventListener('click', analyzeCollisions);
+            document.getElementById('resetBtn').addEventListener('click', resetSimulation);
+            document.getElementById('exportJSON').addEventListener('click', exportJSON);
+            document.getElementById('exportCSV').addEventListener('click', exportCSV);
+            document.getElementById('clearData').addEventListener('click', clearTrainingData);
+            for (let i = 1; i <= 6; i++) document.getElementById(`action${i}`).addEventListener('click', () => executeAction(i));
+        }
+
+        function setTimeSpeed(multiplier) {
+            animationSpeed = multiplier;
+            document.getElementById('timeDisplay').textContent = `${multiplier}x`;
+            log(`Time acceleration set to ${multiplier}x`, 'info');
+        }
+
+        function analyzeCollisions() {
+            if (satellites.length < 2) {
+                log('At least two objects required for analysis', 'warning');
+                return;
+            }
+            log('Analyzing for high-risk conjunctions...', 'info');
+            updateSatellitesAndCheckCollisions(); 
+            if(!currentCollision) log('No high-risk conjunctions found', 'success');
+        }
+
+        function resetSimulation() {
+            if (confirm('Are you sure you want to reset the simulation? This will clear all orbital objects.')) {
+                satellites.forEach(removeSatellite);
+                satellites = [];
+                currentCollision = null;
+                document.getElementById('collisionAlert').classList.remove('active');
+                updateObjectCount();
+                log('Simulation reset', 'warning');
+            }
+        }
+
+        async function loadCelesTrakCatalog() {
+            const catalog = document.getElementById('celestrakCatalog').value;
+            const numObjects = parseInt(document.getElementById('numCatalogObjects').value);
+            if (!catalog) { log('Please select a catalog', 'warning'); return; }
+            log(`Loading ${numObjects} objects from ${catalog}...`, 'info');
+            const celestrakUrls = { 'stations': 'https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle', 'active': 'https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=tle', 'starlink': 'https://celestrak.org/NORAD/elements/gp.php?GROUP=starlink&FORMAT=tle', 'debris': 'https://celestrak.org/NORAD/elements/gp.php?GROUP=fengyun-1c-debris&FORMAT=tle' };
+            try {
+                let response = await fetch(celestrakUrls[catalog]);
+                if (!response.ok) {
+                    log('Direct fetch failed, trying CORS proxy...', 'warning');
+                    response = await fetch(`https://cors-anywhere.herokuapp.com/${celestrakUrls[catalog]}`);
+                }
+                if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+                const lines = (await response.text()).trim().split('\n');
+                let loaded = 0;
+                for (let i = 0; i < lines.length && loaded < numObjects; i += 3) {
+                    if (i + 2 < lines.length && lines[i].trim().length > 0) {
+                        const name = lines[i].trim().slice(0, 20) || `OBJ-${loaded}`;
+                        addSatellite(name, catalog.includes('debris') ? 'debris' : 'satellite');
+                        loaded++;
+                    }
+                }
+                log(`Successfully loaded ${loaded} objects from ${catalog}`, 'success');
+            } catch (error) {
+                log(`Error: ${error.message}. Try adding objects manually.`, 'danger');
+                console.error('CelesTrak error:', error);
+            }
+        }
+
+        function exportJSON() {
+            downloadFile(JSON.stringify(trainingData, null, 2), `training_data_${Date.now()}.json`, 'application/json');
+            log('Exported training data as JSON', 'info');
+        }
+
+        function exportCSV() {
+            if (trainingData.length === 0) { log('No data to export', 'warning'); return; }
+            const rows = trainingData.map(d => ({ episode: d.episode, timestamp: d.timestamp, primary_pos_x: d.state.primary_pos[0], primary_pos_y: d.state.primary_pos[1], primary_pos_z: d.state.primary_pos[2], threat_pos_x: d.state.threat_pos[0], threat_pos_y: d.state.threat_pos[1], threat_pos_z: d.state.threat_pos[2], relative_pos_x: d.state.relative_pos[0], relative_pos_y: d.state.relative_pos[1], relative_pos_z: d.state.relative_pos[2], initial_proximity: d.state.initial_proximity, primary_type: d.state.primary_type, threat_type: d.state.threat_type, action_id: d.action_id, action_name: d.action_name, outcome: d.outcome, reward: d.reward }));
+            const headers = Object.keys(rows[0]).join(',');
+            const csvRows = rows.map(row => Object.values(row).join(','));
+            downloadFile([headers, ...csvRows].join('\n'), `training_data_${Date.now()}.csv`, 'text/csv');
+            log('Exported training data as CSV', 'info');
+        }
+
+        function downloadFile(content, filename, type) {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([content], { type: type }));
+            a.download = filename; a.click(); URL.revokeObjectURL(a.href);
+        }
+
+        function clearTrainingData() {
+            if (confirm('Clear all training data? This cannot be undone.')) {
+                trainingData = []; episodeCount = 0; updateStats(); saveData();
+                log('Training data cleared', 'warning');
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem('orbitalTrainingData', JSON.stringify({ trainingData, episodeCount, collisionCount, avoidanceCount }));
+        }
+
+        function loadStoredData() {
+            const stored = localStorage.getItem('orbitalTrainingData');
+            if (stored) {
+                const data = JSON.parse(stored);
+                trainingData = data.trainingData || [];
+                episodeCount = data.episodeCount || 0;
+                collisionCount = data.collisionCount || 0;
+                avoidanceCount = data.avoidanceCount || 0;
+                updateStats();
+                log('Loaded previous training session', 'info');
+            }
+        }
+
+        function log(message, type = 'info') {
+            const consoleDiv = document.getElementById('logConsole');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.innerHTML = `<span class="log-timestamp">[${new Date().toLocaleTimeString()}]</span> ${message}`;
+            consoleDiv.appendChild(entry);
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+            if (consoleDiv.children.length > 100) consoleDiv.removeChild(consoleDiv.firstChild);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        document.addEventListener('DOMContentLoaded', () => { init(); loadStoredData(); });
+    </script>
+</body>
+</html>

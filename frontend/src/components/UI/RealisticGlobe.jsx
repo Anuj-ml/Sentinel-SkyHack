@@ -231,7 +231,7 @@ const containerStyle = {
     position: 'relative'
 };
 
-const RealisticGlobe = ({ satellites = [], selectedSatellite = null }) => {
+const RealisticGlobe = ({ satellites = [], selectedSatellite = null, showStars = true }) => {
     return (
         <div style={containerStyle}>
             <Canvas camera={{ position: [0, 0, 4.5], fov: 40 }}>
@@ -240,13 +240,12 @@ const RealisticGlobe = ({ satellites = [], selectedSatellite = null }) => {
                 <directionalLight position={[-6, -4, -3]} intensity={0.6} color="#9cc0ff" />
                 <pointLight position={[0, -5, 5]} intensity={0.4} color="#89a6ff" />
 
-                <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
+                {showStars && <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />}
 
                 <group rotation={[0.2, 0, 0]} scale={[1.5, 1.5, 1.5]}>
                     <Suspense fallback={<FallbackEarth />}>
                         <TexturedEarth />
                 </Suspense>
-                    <DebrisField />
                     {satellites.map((sat) => (
                         <SatelliteMarker
                             key={sat.id || sat.name}

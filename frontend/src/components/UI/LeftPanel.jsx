@@ -17,7 +17,8 @@ const LeftPanel = ({
     setFilterBy,
     satellites,
     selectedSat,
-    hazards
+    hazards,
+    onBack
 }) => {
     return (
         <div style={{
@@ -32,6 +33,7 @@ const LeftPanel = ({
                 onSelect={handleSelectSat}
                 showDebris={showDebris}
                 setShowDebris={setShowDebris}
+                onBack={onBack}
             />
 
             {/* Dedicated Filter/Sort Box */}

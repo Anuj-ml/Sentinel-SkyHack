@@ -23,7 +23,7 @@ const AboutSection = () => {
     ];
 
     return (
-        <div style={{ background: '#000000', color: '#ffffff', position: 'relative' }}>
+        <div style={{ background: 'url("/landing-bg.png")', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', color: '#ffffff', position: 'relative' }}>
             <div style={{
                 display: 'flex',
                 maxWidth: '1200px',

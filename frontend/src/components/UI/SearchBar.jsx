@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const SearchBar = ({ satellites, onSelect, showDebris, setShowDebris }) => {
+const SearchBar = ({ satellites, onSelect, showDebris, setShowDebris, onBack }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [showDropdown, setShowDropdown] = useState(false);
 
@@ -18,6 +18,24 @@ const SearchBar = ({ satellites, onSelect, showDebris, setShowDebris }) => {
                 gap: '12px',
                 width: '320px'
             }}>
+                {onBack && (
+                    <button
+                        onClick={onBack}
+                        title="Back to Landing"
+                        style={{
+                            background: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '4px',
+                            borderRadius: '4px'
+                        }}
+                    >
+                        <span className="material-symbols-outlined" style={{ color: 'var(--md-sys-color-on-surface-variant)', fontSize: '20px' }}>arrow_back</span>
+                    </button>
+                )}
                 <span className="material-symbols-outlined" style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>search</span>
                 <input
                     type="text"

@@ -32,8 +32,8 @@ const OrbitPath = ({ points, color = "#ff007a" }) => {
 
     try {
         return (
-            <line geometry={geometry} renderOrder={999}>
-                <lineBasicMaterial color={color} transparent opacity={1} linewidth={3} depthTest={false} />
+            <line geometry={geometry} renderOrder={2}>
+                <lineBasicMaterial color={color} transparent opacity={0.8} linewidth={3} depthTest={true} />
             </line>
         );
     } catch (error) {

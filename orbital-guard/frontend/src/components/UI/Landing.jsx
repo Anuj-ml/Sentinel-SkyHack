@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import LandingGlobe3D from './LandingGlobe3D';
-import { GlobeDemo } from './GlobeDemo';
+import RealisticGlobe from './RealisticGlobe';
 import AboutSection from './AboutSection';
 import Footer from './Footer';
 
@@ -126,7 +126,7 @@ const Landing = ({ onInitialize }) => {
                         height: '3rem', // Fixed height to prevent layout shift
                         fontFamily: '"Roboto Mono", monospace'
                     }}>
-                        <TypingText text="Real-time visualization of 2000+ active satellites and debris." delay={800} />
+                        <TypingText text="Real-time visualization of 200+ active satellites and debris." delay={800} />
                     </div>
 
                     <motion.button
@@ -198,7 +198,7 @@ const Landing = ({ onInitialize }) => {
                         pointerEvents: 'all'
                     }}
                 >
-                    <GlobeDemo />
+                    <RealisticGlobe />
                 </motion.div>
             </main>
 

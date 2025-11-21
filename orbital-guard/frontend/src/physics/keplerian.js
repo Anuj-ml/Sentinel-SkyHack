@@ -8,12 +8,13 @@ export function propagateKeplerian(orbit, time) {
     const t = time.getTime() / 1000; // seconds
 
     // Mean Anomaly M = M0 + n * t
-    // orbit.phase is M0 (radians)
-    // orbit.speed is n (rad/s) - actually we stored it as rad/frame in generator?
-    // Generator: speed = 0.001 + random... (rad/frame approx).
-    // Let's treat orbit.speed as rad/second for this propagator.
+    // Calculate Mean Motion (n) based on Radius (r) for circular orbit
+    // n = sqrt(mu / r^3)
+    // mu = 398600 km^3/s^2
+    const mu = 398600;
+    const n = Math.sqrt(mu / Math.pow(orbit.radius, 3)); // rad/s
 
-    const M = orbit.phase + orbit.speed * (t % 100000); // Modulo to keep numbers small
+    const M = orbit.phase + n * t;
 
     // Circular Orbit (e=0)
     // r = radius

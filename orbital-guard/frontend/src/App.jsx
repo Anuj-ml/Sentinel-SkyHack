@@ -251,11 +251,18 @@ function App() {
 
         // Generate 200 points for smoother orbit
         const startTime = currentTime.getTime();
+        const scale = 5 / 6371; // Match Globe scale
         for (let i = 0; i <= 200; i++) {
             const t = startTime + (i / 200) * period * 1000; // ms
             const timeObj = new Date(t);
             const pos = safePropagate(selectedSat, timeObj);
-            points.push(new THREE.Vector3(pos.x, pos.y, pos.z));
+
+            // Apply same coordinate transformation as SatelliteSwarm
+            const x = pos.x * scale;
+            const y = pos.z * scale; // Swap Y and Z for visual orientation
+            const z = -pos.y * scale;
+
+            points.push(new THREE.Vector3(x, y, z));
         }
         return points;
     }, [selectedSat, currentTime]);
@@ -415,7 +422,7 @@ function App() {
                                 showDebris={showDebris}
                             />
 
-                            {selectedSat && orbitPathPoints.length > 0 && (
+                            {selectedSat && selectedSat.type !== 'DEBRIS' && orbitPathPoints.length > 0 && (
                                 <OrbitPath
                                     points={orbitPathPoints}
                                     color={selectedSat.type === 'DEBRIS' ? '#ff0000' : '#ffff00'}

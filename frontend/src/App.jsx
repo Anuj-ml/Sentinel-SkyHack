@@ -16,6 +16,7 @@ import HazardList from './components/UI/HazardList';
 import ManeuverSuggestion from './components/UI/ManeuverSuggestion';
 import CollisionStrip from './components/UI/CollisionStrip';
 import Landing from './components/UI/Landing';
+import AdvancedSimulator from './pages/AdvancedSimulator';
 import TimeSlider from './components/UI/TimeSlider';
 import { useSatelliteData } from './hooks/useSatelliteData';
 import SortDropdown from './components/UI/SortDropdown';
@@ -108,7 +109,7 @@ class ErrorBoundary extends Component {
 }
 
 function App() {
-    const [initialized, setInitialized] = useState(false);
+    const [view, setView] = useState('landing');
     const [showDebris, setShowDebris] = useState(false);
     const [selectedSat, setSelectedSat] = useState(null);
     const [hazards, setHazards] = useState([]);
@@ -268,22 +269,31 @@ function App() {
     }, [selectedSat, currentTime]);
 
     useEffect(() => {
-        if (!initialized) {
+        if (view === 'landing') {
             document.body.classList.add('landing-active');
             document.body.classList.remove('tracker-active');
+        } else if (view === 'tracker') {
+            document.body.classList.add('tracker-active');
+            document.body.classList.remove('landing-active');
         } else {
             document.body.classList.remove('landing-active');
-            document.body.classList.add('tracker-active');
+            document.body.classList.remove('tracker-active');
         }
-    }, [initialized]);
+    }, [view]);
 
     return (
         <ErrorBoundary>
-            {!initialized ? (
+            {view === 'landing' ? (
                 <Landing
-                    onInitialize={() => setInitialized(true)}
+                    onInitialize={() => setView('tracker')}
                     onToggleDebris={setShowDebris}
                     showDebris={showDebris}
+                    onOpenSimulator={() => setView('simulator')}
+                />
+            ) : view === 'simulator' ? (
+                <AdvancedSimulator
+                    onBack={() => setView('landing')}
+                    onLaunchTracker={() => setView('tracker')}
                 />
             ) : (loading) ? (
                 <div style={{

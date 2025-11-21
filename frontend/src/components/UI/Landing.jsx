@@ -24,7 +24,7 @@ const TypingText = ({ text, delay = 0 }) => {
     return <span>{displayedText}<span className="cursor">|</span></span>;
 };
 
-const Landing = ({ onInitialize }) => {
+const Landing = ({ onInitialize, onOpenSimulator }) => {
     return (
         <div style={{
             width: '100%',
@@ -129,32 +129,57 @@ const Landing = ({ onInitialize }) => {
                         <TypingText text="Real-time visualization of 200+ active satellites and debris." delay={800} />
                     </div>
 
-                    <motion.button
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 1.5, duration: 0.5 }}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={onInitialize}
-                        style={{
-                            padding: '16px 40px',
-                            fontSize: '1.1rem',
-                            fontWeight: 500,
-                            borderRadius: '30px',
-                            border: 'none',
-                            background: '#4285F4',
-                            color: 'white',
-                            cursor: 'pointer',
-                            boxShadow: '0 4px 15px rgba(66, 133, 244, 0.3)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                            marginBottom: '40px'
-                        }}
-                    >
-                        Launch Tracker
-                        <span className="material-symbols-outlined">arrow_forward</span>
-                    </motion.button>
+                    <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '40px' }}>
+                        <motion.button
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 1.5, duration: 0.5 }}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={onInitialize}
+                            style={{
+                                padding: '16px 40px',
+                                fontSize: '1.1rem',
+                                fontWeight: 500,
+                                borderRadius: '30px',
+                                border: 'none',
+                                background: '#4285F4',
+                                color: 'white',
+                                cursor: 'pointer',
+                                boxShadow: '0 4px 15px rgba(66, 133, 244, 0.3)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '12px'
+                            }}
+                        >
+                            Launch Tracker
+                            <span className="material-symbols-outlined">arrow_forward</span>
+                        </motion.button>
+                        <motion.button
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 1.7, duration: 0.5 }}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={onOpenSimulator}
+                            style={{
+                                padding: '16px 32px',
+                                fontSize: '1.05rem',
+                                fontWeight: 500,
+                                borderRadius: '30px',
+                                border: '1px solid rgba(255,255,255,0.2)',
+                                background: 'transparent',
+                                color: 'white',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '12px'
+                            }}
+                        >
+                            Advanced Collision Simulator
+                            <span className="material-symbols-outlined">science</span>
+                        </motion.button>
+                    </div>
 
                     {/* Stats below button */}
                     <motion.div
@@ -194,11 +219,14 @@ const Landing = ({ onInitialize }) => {
                         alignItems: 'center',
                         position: 'relative',
                         height: '80vh',
+                        maxWidth: '560px',
                         zIndex: 1,
                         pointerEvents: 'all'
                     }}
                 >
-                    <RealisticGlobe />
+                    <div style={{ width: '100%', maxWidth: '580px', aspectRatio: '1 / 1', borderRadius: '32px', overflow: 'hidden' }}>
+                        <RealisticGlobe />
+                    </div>
                 </motion.div>
             </main>
 
